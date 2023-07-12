@@ -7,6 +7,7 @@ namespace postProcessing
 {
 
 void planarAvg(nrs_t *nrs, const std::string& dir, int NELGX, int NELGY, int NELGZ, int nflds, occa::memory o_avg);
+void planarAvgCyl(nrs_t *nrs, int NELGXY, int NELGZ, int nflds, occa::memory o_avg);
 dfloat viscousDrag(nrs_t *nrs, int nbID, const occa::memory& o_bID, occa::memory& o_Sij);
 
 //       ( SO0          )         (     SO8  SO7)

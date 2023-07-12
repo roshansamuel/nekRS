@@ -180,6 +180,72 @@ void fusedPlanarAvg(nrs_t *nrs, const std::string & direction, int NELGX, int NE
     o_avg);
 }
 
+void fusedPlanarAvgCyl(nrs_t *nrs, int NELGXY, int NELGZ, int nflds, occa::memory o_avg)
+{
+  if (!platform->device.deviceAtomic) {
+    if (platform->comm.mpiRank == 0) {
+      std::cout << "Device atomics are not supported!\n";
+      std::cout << "Planar averages for cylinders cannot be calculated.\n";
+    }
+
+    nrsAbort(platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "Cylindrical planar averaging failure!");
+  }
+
+  const auto * mesh = nrs->meshV;
+  static occa::memory o_locToGlobE;
+
+  int elemDir = NELGZ;
+
+  const auto Nwords = nflds * mesh->Nq * elemDir;
+  const auto Nbytes = Nwords * sizeof(dfloat);
+
+  if (platform->o_mempool.bytesAllocated < Nbytes) {
+    // compute minimum number of fields holding nrs->fieldOffset dfloat elements
+    auto Nfields = Nwords / nrs->fieldOffset;
+    if (Nwords % nrs->fieldOffset)
+      Nfields++;
+
+    platform->create_mempool(nrs->fieldOffset, Nfields);
+  }
+
+  auto &o_scratch = platform->o_mempool.o_ptr;
+
+  if(o_locToGlobE.size() == 0){
+    std::vector<dlong> globalElement(mesh->Nelements, 0);
+    for(int element = 0; element < mesh->Nelements; ++element){
+      const auto ge = nek::lglel(element);
+      globalElement[element] = ge;
+    }
+
+    o_locToGlobE = platform->device.malloc(mesh->Nelements * sizeof(dlong), globalElement.data());
+  }
+
+  auto gatherPlanarValuesKernel = platform->kernels.get("gatherPlanarValuesCyl");
+  auto scatterPlanarValuesKernel = platform->kernels.get("scatterPlanarValuesCyl");
+
+  platform->linAlg->fill(Nwords, 0.0, o_scratch);
+
+  gatherPlanarValuesKernel(mesh->Nelements,
+    nflds,
+    nrs->fieldOffset,
+    NELGXY,
+    NELGZ,
+    o_locToGlobE,
+    o_avg,
+    o_scratch);
+
+  platform->comm.allreduce(o_scratch, Nwords, comm_t::type::dfloat, comm_t::op::sum, platform->comm.mpiComm);
+
+  scatterPlanarValuesKernel(mesh->Nelements,
+    nflds,
+    nrs->fieldOffset,
+    NELGXY,
+    NELGZ,
+    o_locToGlobE,
+    o_scratch,
+    o_avg);
+}
+
 } // namespace
 
 
@@ -279,4 +345,37 @@ void postProcessing::planarAvg(nrs_t *nrs, const std::string& dir, int NELGX, in
   } else {
     oogs::startFinish(o_avg, nflds, nrs->fieldOffset, ogsDfloat, ogsAdd, gsh);
   }
+} 
+
+
+void postProcessing::planarAvgCyl(nrs_t *nrs, int NELGXY, int NELGZ, int nflds, occa::memory o_avg)
+{
+  mesh_t* mesh = nrs->meshV;
+  const auto fieldOffsetByte = nrs->fieldOffset * sizeof(dfloat);
+
+  static occa::memory o_avgWeight_xy;
+
+  occa::memory o_wghts;
+  oogs_t *gsh = nullptr;
+
+  o_wghts = o_avgWeight_xy;
+
+  if(!gsh && o_wghts.size() == 0) {
+
+    o_avgWeight_xy = platform->device.malloc(fieldOffsetByte);
+    o_wghts = o_avgWeight_xy;
+
+    o_wghts.copyFrom(mesh->o_LMM, mesh->Nlocal*sizeof(dfloat));
+    fusedPlanarAvgCyl(nrs, NELGXY, NELGZ, 1, o_wghts);
+    platform->linAlg->ady(mesh->Nlocal, 1, o_wghts);
+    platform->linAlg->axmy(mesh->Nlocal, 1, mesh->o_LMM, o_wghts);
+
+  }
+
+  for(int ifld = 0; ifld < nflds; ifld++) {
+    auto o_wrk = o_avg.slice(ifld*fieldOffsetByte, fieldOffsetByte);
+    platform->linAlg->axmy(mesh->Nlocal, 1, o_wghts, o_wrk);
+  } 
+
+  fusedPlanarAvgCyl(nrs, NELGXY, NELGZ, nflds, o_avg);
 } 

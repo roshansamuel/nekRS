@@ -40,4 +40,12 @@ void registerPostProcessingKernels()
     fileName = oklpath + "/postProcessing/" + kernelName + ".okl";
     platform->kernels.add(kernelName, fileName, kernelInfo);
   }
+
+  kernelName = "gatherPlanarValuesCyl";
+  fileName = oklpath + "/postProcessing/" + kernelName + ".okl";
+  platform->kernels.add(kernelName, fileName, kernelInfo);
+
+  kernelName = "scatterPlanarValuesCyl";
+  fileName = oklpath + "/postProcessing/" + kernelName + ".okl";
+  platform->kernels.add(kernelName, fileName, kernelInfo);
 }
