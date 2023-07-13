@@ -12,7 +12,7 @@
     get_ez_cyl(&ez, locToGlobE[e], nelxy);
 
     // The below value was 1/nelx for planar averaging in box
-    const dfloat invNelx = 1.0 / sqrt(nelxy);
+    const dfloat invNelx = 1.0 / sqrt( (float) nelxy);
 
     for (int fld = 0; fld < Nfields; ++fld) {
       for (int k = 0; k < p_Nq; ++k; @inner(0)) {
