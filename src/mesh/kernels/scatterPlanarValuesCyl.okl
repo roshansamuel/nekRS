@@ -1,0 +1,30 @@
+@kernel void scatterPlanarValuesCyl(const dlong Nelements,
+                                    const dlong Nfields,
+                                    const dlong fieldOffset,
+                                    const dlong nelxy,
+                                    const dlong nelz,
+                                    @ restrict const dlong *locToGlobE,
+                                    @ restrict const dfloat *field,
+                                    @ restrict dfloat *result)
+{
+  for (dlong e = 0; e < Nelements; e++; @outer(0)) {
+    dlong ez;
+    get_ez_cyl(&ez, locToGlobE[e], nelxy);
+
+    // The below value was 1/nelx for planar averaging in box
+    const dfloat invNelx = 1.0 / sqrt( (float) nelxy);
+
+    for (int fld = 0; fld < Nfields; ++fld) {
+      for (int k = 0; k < p_Nq; ++k; @inner(0)) {
+        const dlong offset = nelz * p_Nq * fld;
+        const dfloat value = field[ez * p_Nq + k + offset];
+        for (int j = 0; j < p_Nq; ++j) {
+          for (int i = 0; i < p_Nq; ++i) {
+            const dlong id = e * p_Np + i + j * p_Nq + k * p_Nq * p_Nq;
+            result[id + fld * fieldOffset] = value * invNelx;
+          }
+        }
+      }
+    }
+  }
+}
