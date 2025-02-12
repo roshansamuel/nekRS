@@ -19,3 +19,17 @@ void get_exyz(int* ex, int* ey, int* ez, int eg, int nelx, int nely, int nelz)
   (*ez)--;
 
 }
+
+// For xy-planar averaging within cylindrical
+// domains aligned along the z-axis
+void get_ez_cyl(int* ez, int eg, int nelxy)
+{
+  // convert 0-based indexing to 1-based indexing
+  eg++;
+
+  // compute based on 1-based indexing
+  *ez = 1 + (eg-1)/(nelxy);
+
+  // shift back to 0-based indexing
+  (*ez)--;
+}
