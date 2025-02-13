@@ -151,7 +151,7 @@ void registerMeshKernels(occa::properties kernelInfoBC)
       fileName = oklpath + "/core/linAlg/" + kernelName + ".okl";
       platform->kernelRequests.add("hlong-" + meshPrefix + kernelName, fileName, hlongSumKernelInfo);
 
-      for (const std::string dir : {"XY", "XZ", "YZ"}) {
+      for (const std::string dir : {"XY", "XZ", "YZ", "Cyl"}) {
         auto props = kernelInfo;
         props["includes"].asArray();
         props["includes"] += oklpath + "/mesh/planarAveraging.h";

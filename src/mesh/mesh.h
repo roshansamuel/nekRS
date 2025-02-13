@@ -294,6 +294,13 @@ void planarAvg(mesh_t *mesh,
                dlong offset,
                occa::memory &o_avg);
 
+void planarAvgCyl(mesh_t *mesh,
+                  int NELGXY,
+                  int NELGZ,
+                  int nflds,
+                  dlong offset,
+                  occa::memory &o_avg);
+
 void meshPartitionStatistics(mesh_t *mesh);
 
 void meshParallelGatherScatterSetup(mesh_t *mesh,
